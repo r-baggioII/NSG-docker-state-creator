@@ -62,6 +62,7 @@ STREAM_PATHS = {
     "syscalls": "syscalls",
     "bash_history": "tty",
     "health": "health.json",
+    "network": "network/topology.jsonl",
 }
 
 #: Streams whose records come from JSONL files (envelope-pinned).

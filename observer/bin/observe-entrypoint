@@ -98,6 +98,8 @@ def start_sensors() -> None:
         start("filesystem-monitor", [str(ROOT / "bin/filesystem-monitor")])
     if enabled("OBS_ENABLE_STATE_RECONCILIATION"):
         start("state-reconciler", [str(ROOT / "bin/state-reconciler")])
+    if enabled("OBS_ENABLE_NETWORK_TOPOLOGY"):
+        start("network-monitor", [str(ROOT / "bin/network-monitor")])
     if enabled("OBS_ENABLE_BCC"):
         start("bcc-monitor", [str(ROOT / "bin/bcc-monitor")])
 

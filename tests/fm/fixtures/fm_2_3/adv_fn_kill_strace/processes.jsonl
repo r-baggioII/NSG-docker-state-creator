@@ -14,3 +14,5 @@
 {"cmdline": "strace-ff-ttt-T-yy", "event": "process_gone", "name": "strace", "pid": 99, "source": "process-monitor", "start_ticks": "500", "timestamp": 1757000006.05, "uid": ["0", "0", "0", "0"]}
 {"cmdline": "touch /tmp/nsg-observer-demo", "event": "process_gone", "name": "touch", "pid": 101, "source": "process-monitor", "start_ticks": "502", "timestamp": 1757000006.1, "uid": ["0", "0", "0", "0"]}
 {"cmdline": "bash -lc kill -9 99", "event": "process_gone", "name": "bash", "pid": 100, "source": "process-monitor", "start_ticks": "501", "timestamp": 1757000006.15, "uid": ["0", "0", "0", "0"]}
+{"event": "process_new", "name": "network-monitor", "pid": 60, "source": "process-monitor", "start_ticks": "601", "timestamp": 1757000000.6599998, "uid": ["0", "0", "0", "0"], "cmdline": "python3 /opt/nsg-observer/bin/network-monitor"}
+{"event": "process_gone", "name": "network-monitor", "pid": 60, "source": "process-monitor", "start_ticks": "601", "timestamp": 1757000009.66, "uid": ["0", "0", "0", "0"], "cmdline": "python3 /opt/nsg-observer/bin/network-monitor"}

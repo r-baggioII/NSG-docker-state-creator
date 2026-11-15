@@ -133,6 +133,7 @@ DEPENDS_ON = frozenset({
     "filesystem_monitor",
     "reconciliation",
     "sockets",
+    "network",
 })
 
 #: Default configuration (every key overridable via fm_2_3.json).
@@ -215,6 +216,7 @@ _SENSOR_OWNED_STREAMS = {
     "filesystem_monitor": "filesystem-monitor",
     "reconciliation": "state-reconciler",
     "sockets": "socket-monitor",
+    "network": "network-monitor",
 }
 
 

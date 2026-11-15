@@ -9,6 +9,7 @@
 {"evidence": ["sensor=bcc-monitor", "pid=54", "identity=54@84", "alive_at_workload_exit=1", "workload_exited_ts=1757000009.500000", "census_last_seen pid=54@84 ts=1757000000.600000", "teardown_sensor_signal_after_workload_exit seq=12 ts=1757000009.640000 signal=15"], "fm_id": "FM2.3", "integrity_flags": [], "outcome": "PASS", "unit_key": "FM2.3/sensor=bcc-monitor"}
 {"evidence": ["sensor=execsnoop-bpfcc", "pid=60"], "fm_id": "FM2.3", "integrity_flags": ["FM2.3:sensor_not_in_census"], "outcome": "UNMEASURED", "unit_key": "FM2.3/sensor=execsnoop-bpfcc"}
 {"evidence": ["sensor=filesystem-monitor", "pid=52"], "fm_id": "FM2.3", "integrity_flags": ["FM2.3:sensor_not_in_census"], "outcome": "UNMEASURED", "unit_key": "FM2.3/sensor=filesystem-monitor"}
+{"evidence": ["sensor=network-monitor", "pid=60"], "fm_id": "FM2.3", "integrity_flags": ["FM2.3:sensor_not_in_census"], "outcome": "UNMEASURED", "unit_key": "FM2.3/sensor=network-monitor"}
 {"evidence": ["sensor=process-monitor", "pid=50", "identity=50@80", "alive_at_workload_exit=1", "workload_exited_ts=1757000009.500000", "census_last_seen pid=50@80 ts=1757000000.550000", "teardown_sensor_signal_after_workload_exit seq=8 ts=1757000009.600000 signal=15"], "fm_id": "FM2.3", "integrity_flags": [], "outcome": "PASS", "unit_key": "FM2.3/sensor=process-monitor"}
 {"evidence": ["sensor=socket-monitor", "pid=51"], "fm_id": "FM2.3", "integrity_flags": ["FM2.3:sensor_not_in_census"], "outcome": "UNMEASURED", "unit_key": "FM2.3/sensor=socket-monitor"}
 {"evidence": ["sensor=state-reconciler", "pid=53"], "fm_id": "FM2.3", "integrity_flags": ["FM2.3:sensor_not_in_census"], "outcome": "UNMEASURED", "unit_key": "FM2.3/sensor=state-reconciler"}
@@ -26,8 +27,8 @@
 {"evidence": ["records=3"], "fm_id": "SMOKE", "integrity_flags": [], "outcome": "PASS", "unit_key": "SMOKE/stream=filesystem_events"}
 {"evidence": ["records=2"], "fm_id": "SMOKE", "integrity_flags": [], "outcome": "PASS", "unit_key": "SMOKE/stream=filesystem_monitor"}
 {"evidence": ["records=1"], "fm_id": "SMOKE", "integrity_flags": [], "outcome": "PASS", "unit_key": "SMOKE/stream=health"}
-{"evidence": ["records=10"], "fm_id": "SMOKE", "integrity_flags": [], "outcome": "PASS", "unit_key": "SMOKE/stream=processes"}
+{"evidence": ["records=12"], "fm_id": "SMOKE", "integrity_flags": [], "outcome": "PASS", "unit_key": "SMOKE/stream=processes"}
 {"evidence": ["records=3"], "fm_id": "SMOKE", "integrity_flags": [], "outcome": "PASS", "unit_key": "SMOKE/stream=reconciliation"}
 {"evidence": ["records=5"], "fm_id": "SMOKE", "integrity_flags": [], "outcome": "PASS", "unit_key": "SMOKE/stream=sockets"}
-{"evidence": ["records=12"], "fm_id": "SMOKE", "integrity_flags": [], "outcome": "PASS", "unit_key": "SMOKE/stream=supervisor"}
+{"evidence": ["records=14"], "fm_id": "SMOKE", "integrity_flags": [], "outcome": "PASS", "unit_key": "SMOKE/stream=supervisor"}
 {"evidence": ["records=9"], "fm_id": "SMOKE", "integrity_flags": [], "outcome": "PASS", "unit_key": "SMOKE/stream=syscalls"}

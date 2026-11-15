@@ -46,7 +46,8 @@ def units_by_key(case: str):
 
 SENSOR_KEYS = [f"FM2.3/sensor={name}" for name in (
     "process-monitor", "socket-monitor", "filesystem-monitor",
-    "state-reconciler", "bcc-monitor", "execsnoop-bpfcc", "opensnoop-bpfcc")]
+    "state-reconciler", "bcc-monitor", "execsnoop-bpfcc", "opensnoop-bpfcc",
+    "network-monitor")]
 
 
 # ---------------------------------------------------------------------------

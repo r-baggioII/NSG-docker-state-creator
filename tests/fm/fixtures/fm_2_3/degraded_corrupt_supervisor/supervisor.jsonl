@@ -11,3 +11,5 @@
 {"event": "sensor_signal", "name": "filesystem-monitor", "pid": 52, "signal": 15, "source": "supervisor", "timestamp": 1757000009.62}
 {"event": "sensor_signal", "name": "state-reconciler", "pid": 53, "signal": 15, "source": "supervisor", "timestamp": 1757000009.63}
 {"event": "sensor_signal", "name": "bcc-monitor", "pid": 54, "signal": 15, "source": "supervisor", "timestamp": 1757000009.64}
+{"argv": ["/opt/nsg-observer/bin/network-monitor"], "event": "sensor_started", "name": "network-monitor", "pid": 60, "source": "supervisor", "timestamp": 1757000000.6499999}
+{"event": "sensor_signal", "name": "network-monitor", "pid": 60, "signal": 15, "source": "supervisor", "timestamp": 1757000009.65}

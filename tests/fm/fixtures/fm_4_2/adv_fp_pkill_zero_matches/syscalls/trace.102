@@ -1,0 +1,2 @@
+1757100005.000000 execve("/usr/bin/pkill", ["/usr/bin/pkill", "zzz-no-such-proc"], /* 5 vars */) = 0 <0.001200>
+1757100005.100000 +++ exited with 1 +++

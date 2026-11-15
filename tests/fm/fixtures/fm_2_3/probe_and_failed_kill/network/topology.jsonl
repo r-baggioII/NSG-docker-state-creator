@@ -1,0 +1,1 @@
+{"argv": ["ip", "-j", "address", "show"], "ok": true, "returncode": 0, "value": [{"ifname": "eth0", "addr_info": [{"local": "10.10.20.11", "prefixlen": 24}]}], "parsed": true, "source": "network-monitor", "timestamp": 1757000005.1}

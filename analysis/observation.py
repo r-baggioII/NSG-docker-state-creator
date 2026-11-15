@@ -62,6 +62,7 @@ STREAM_PATHS = {
     "syscalls": "syscalls",
     "bash_history": "tty",
     "health": "health.json",
+    "network": "network/topology.jsonl",
 }
 
 #: Streams whose records come from JSONL files (envelope-pinned).
@@ -113,6 +114,13 @@ class Observation:
     health: HealthFinal | None = None
     flags: tuple[StreamFlag, ...] = ()
     pins: EnvelopePins = DEFAULT_ENVELOPE_PINS
+    #: Agent-scoped wire plane (analysis.agents): peer hosts' zeek
+    #: directories and the fact that a PEER host's supervisor declares a
+    #: zeek sensor.  Empty/False in every per-host load (the default), so
+    #: per-host behavior is untouched; the conn.log loaders consult these
+    #: so the agent's wire evidence is read wherever it was captured.
+    wire_zeek_dirs: tuple[Path, ...] = ()
+    wire_zeek_declared: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -262,7 +270,8 @@ def _parse_process(
             previous = _build_process_snapshot(0, prev)
     if event == "monitor_started":
         return ProcRecord(
-            seq=seq, ts=_ts(obj, pins), event=event, pid=-1, start_ticks="")
+            seq=seq, ts=_ts(obj, pins), event=event, pid=-1, start_ticks="",
+            interval_seconds=_as_float(obj.get("interval_seconds")))
     if event == "process_gone":
         uid = obj.get("uid")
         return ProcRecord(

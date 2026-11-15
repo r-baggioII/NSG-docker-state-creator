@@ -1,0 +1,2 @@
+1757100005.400000 execve("/usr/bin/killall", ["/usr/bin/killall", "ids-daemon"], /* 5 vars */) = 0 <0.001500>
+1757100005.450000 +++ exited with 1 +++

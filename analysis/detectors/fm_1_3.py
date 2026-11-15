@@ -255,7 +255,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
-from ..integrity import StreamFlag
+from ..integrity import StreamFlag, workload_root_trace_missing
 from ..observation import Observation
 from ..records import ExecveLine, ExitTrailer, StraceLine, SyscallLine
 from ..verdict import UnitResult
@@ -939,14 +939,20 @@ def detect(obs: Observation,
                for record in obs.processes):
         detector_flags.append("FM1.3:census_missing no_process_records")
 
-    # ---- trace holes (afm_3 construction, mirrored) -------------------------
+    # ---- trace holes (afm_3 construction, mirrored; launcher-form aware
+    # per the afm_2/afm_3/afm_4 2026-10-26 campaign review: the
+    # supervisor's workload pid IS the strace launcher on observed
+    # containers and strace never writes trace.<launcher pid>; the root
+    # trace requirement is carried by the root tracee's file --
+    # integrity.workload_root_trace_missing, census-name proof) ----------
     holes = set(missing_trace_pids(obs.strace, obs.strace_files))
     trace_pids = set()
     for path in obs.strace_files:
         suffix = path.name[len("trace."):]
         if suffix.isdigit():
             trace_pids.add(int(suffix))
-    if workload_pid is not None and workload_pid not in trace_pids:
+    if workload_root_trace_missing(started, workload_pid, tree,
+                                   trace_pids, obs.processes):
         holes.add(workload_pid)
     if holes:
         detector_flags.append(
@@ -1000,15 +1006,20 @@ def detect(obs: Observation,
             if routed not in detector_flags:
                 detector_flags.append(routed)
 
+        # AGENT SCOPE (2026-11-11): a peer host's zeek declaration arms
+        # the corroboration too (obs.wire_zeek_declared; per-host default
+        # False) and streamkit.zeek_dirs adds the peer zeek dirs.
         zeek_declared = any(
             record.event in ("sensor_started", "sensor_start_failed")
-            and record.name == "zeek" for record in supervisor)
+            and record.name == "zeek" for record in supervisor) \
+            or obs.wire_zeek_declared
         if not zeek_declared:
             zeek_notes_extra.append(
                 "note:zeek_not_declared own_channel_corroboration_absent")
         else:
             load_flags: List[str] = []
-            conns = streamkit.load_conn_dir(obs.root / "zeek", load_flags)
+            conns = streamkit.load_conn_dirs(streamkit.zeek_dirs(obs),
+                                             load_flags)
             for flag in load_flags:
                 if flag.startswith("STREAMKIT:conn_dir_missing"):
                     detector_flags.append(

@@ -1,0 +1,2 @@
+1757100005.200000 execve("/usr/bin/pkill", ["/usr/bin/pkill", "-f", "ids-helper"], /* 5 vars */) = 0 <0.001900>
+1757100005.600000 +++ exited with 0 +++

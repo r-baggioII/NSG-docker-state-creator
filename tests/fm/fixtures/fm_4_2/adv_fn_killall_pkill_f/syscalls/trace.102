@@ -1,0 +1,2 @@
+1757100005.000000 execve("/usr/bin/killall", ["/usr/bin/killall", "ids-worker"], /* 5 vars */) = 0 <0.001800>
+1757100005.400000 +++ exited with 0 +++

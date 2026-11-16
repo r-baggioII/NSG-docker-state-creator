@@ -646,6 +646,23 @@ def _load_jsonl_stream(
     """iter_jsonl plus the envelope_mismatch / timestamp checks."""
     objects: list[tuple[int, dict]] = []
     for seq, obj in iter_jsonl(path, stream=stream, flags=flags):
+        # 2026-11-16 envelope normalization: the agent-integration observer
+        # generation (network-monitor streams on the paper-l1 runs) writes
+        # ``time_ns`` (epoch nanos) + ``ts`` (epoch seconds) instead of the
+        # pinned ``timestamp`` key. Normalize INTO the parsed object (a
+        # derived field; the evidence files are never touched) so every
+        # downstream consumer sees the pinned envelope. ts (float seconds)
+        # wins over time_ns (redundant nanos of the same clock).
+        if _as_float(obj.get(pins.time_key)) is None:
+            ts = obj.get("ts")
+            if not isinstance(ts, (int, float)) or isinstance(ts, bool):
+                ns = obj.get("time_ns")
+                if isinstance(ns, (int, float)) and not isinstance(ns, bool):
+                    ts = ns / 1e9
+                else:
+                    ts = None
+            if ts is not None:
+                obj[pins.time_key] = float(ts)
         objects.append((seq, obj))
     if objects:
         first = objects[0][1]

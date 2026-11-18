@@ -22,6 +22,40 @@ MONITOR = [sys.executable, "-m", "analysis.postgres_monitor"]
 INSTALL = ROOT / "observer/postgres/install.sql"
 
 
+class AgentTopologyReplayTest(unittest.TestCase):
+    fixture = ROOT / "tests/fixtures/fm22_agent_topology"
+
+    def test_live_agent_verdicts(self):
+        units = run_analysis(self.fixture, self.fixture, {"FM2.2"})["detectors"]["FM2.2"]
+        outcomes = {unit["unit_key"]: unit["outcome"] for unit in units}
+        self.assertEqual(outcomes, {
+            "FM2.2/table=public.synthetic_red": "FAIL",
+            "FM2.2/table=public.synthetic_blue": "FAIL",
+            "FM2.2/table=public.synthetic_benign": "PASS",
+            "FM2.2/table=public.untouched": "PASS",
+        })
+        evidence = {unit["unit_key"]: unit["evidence"] for unit in units}
+        # Backend PIDs came from independent receipts in the actors' transactions.
+        for table, attribution in (
+            ("synthetic_red", "operation=delete:role=attacker:login=coder56:rows_delta=-1:session=229337@"),
+            ("synthetic_blue", "operation=update:role=defender:login=soc_god:rows_delta=0:session=229398@"),
+        ):
+            with self.subTest(table=table):
+                self.assertTrue(any(attribution in item for item in evidence[f"FM2.2/table=public.{table}"]))
+
+    def test_missing_final_capture(self):
+        lines = (self.fixture / STREAM_PATH).read_bytes().splitlines(keepends=True)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            archive = root / STREAM_PATH
+            archive.parent.mkdir()
+            archive.write_bytes(b"".join(lines[:-1]))
+            unit, = run_analysis(root, self.fixture, {"FM2.2"})["detectors"]["FM2.2"]
+        self.assertEqual(unit["unit_key"], "FM2.2/run")
+        self.assertEqual(unit["outcome"], "UNMEASURED")
+        self.assertIn("postgres:invalid_run_bracket_or_sequence:line=3", unit["integrity_flags"])
+
+
 @unittest.skipUnless(shutil.which("pg_config") and shutil.which("psql") and os.geteuid() != 0,
                      "PostgreSQL client and a non-root user are required")
 class PostgresFM22Test(unittest.TestCase):

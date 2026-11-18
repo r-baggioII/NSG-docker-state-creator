@@ -125,7 +125,37 @@ class PostgresFM22Test(unittest.TestCase):
                 sql("UPDATE public.updated SET value = NULL WHERE id = 1;", "lab_blue")
                 sql("TRUNCATE public.truncated;", "lab_red")
                 sql("DROP TABLE public.dropped;", "lab_red")
-                sql("ALTER TABLE public.column_loss DROP COLUMN value;", "lab_red")
+                with subprocess.Popen(
+                    ["psql", "-XqAtw", "-v", "ON_ERROR_STOP=1"],
+                    env={**env, "PGUSER": "lab_red"}, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                    text=True,
+                ) as ddl:
+                    try:
+                        ddl.stdin.write("BEGIN; ALTER TABLE public.column_loss DROP COLUMN value;"
+                                        " SELECT 'ddl pending';\n")
+                        ddl.stdin.flush()
+                        self.assertTrue(select.select([ddl.stdout], [], [], 5)[0])
+                        self.assertEqual(ddl.stdout.readline().strip(), "ddl pending")
+                        deadline = time.monotonic() + 3
+                        while time.monotonic() < deadline:
+                            waiting = sql("""
+                                SELECT EXISTS (
+                                    SELECT FROM pg_locks l JOIN pg_stat_activity a USING (pid)
+                                    WHERE l.relation = 'public.column_loss'::regclass
+                                      AND NOT l.granted AND a.usename = 'nsg_reader'
+                                );
+                            """).stdout.strip()
+                            if waiting == "t":
+                                break
+                            time.sleep(0.02)
+                        else:
+                            self.fail("collector did not wait for pending schema change")
+                        ddl.communicate("COMMIT;\n", timeout=5)
+                        self.assertEqual(ddl.returncode, 0)
+                    finally:
+                        if ddl.poll() is None:
+                            ddl.kill()
+                self._wait_for_change(archive, "public.column_loss")
                 sql("DELETE FROM public.unattributed WHERE id = 1;", "lab_unknown")
                 sql("""CREATE TYPE lab_types.custom AS ENUM ('example');
                     ALTER TABLE public.unsupported ADD COLUMN new_value lab_types.custom;

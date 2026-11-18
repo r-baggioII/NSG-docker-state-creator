@@ -18,23 +18,54 @@ from .postgres_evidence import (
 
 def capture(previous, timeout, fm33=False):
     function = "nsg_fm33.capture" if fm33 else "nsg_fm22.capture"
-    sql = f"""
+    # Catalog changes can be newer than a repeatable-read data snapshot.
+    # Lock the protected relations before taking that snapshot.
+    sql = rf"""
+SELECT coalesce(
+    'LOCK TABLE ' || string_agg(format('ONLY %I.%I', n.nspname, c.relname), ', ' ORDER BY c.oid)
+        || ' IN ACCESS SHARE MODE',
+    'SET LOCAL lock_timeout = DEFAULT'
+) AS protected_locks
+FROM nsg_fm22.protected_tables AS p
+JOIN pg_catalog.pg_class AS c ON c.oid = p.relation
+JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
+\gset
 BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
 SET LOCAL statement_timeout = :'timeout';
-SELECT {function}(NULLIF(:'previous', '')::pg_snapshot);
+:protected_locks;
+SELECT CASE WHEN EXISTS (
+    SELECT FROM nsg_fm22.protected_tables AS p JOIN pg_catalog.pg_class AS c ON c.oid = p.relation
+    WHERE NOT EXISTS (
+        SELECT FROM pg_catalog.pg_locks AS l
+        WHERE l.pid = pg_backend_pid() AND l.relation = p.relation AND l.granted
+            AND l.locktype = 'relation' AND l.mode = 'AccessShareLock'
+    )
+) THEN jsonb_build_object('protected_inventory_changed', true)
+ELSE {function}(NULLIF(:'previous', '')::pg_snapshot) END;
 COMMIT;
 """
-    result = subprocess.run(
-        ["psql", "-XqAtw", "-v", "ON_ERROR_STOP=1", "-v", f"previous={previous}",
-         "-v", f"timeout={math.ceil(timeout * 1000)}ms"],
-        input=sql, text=True, encoding="utf-8", capture_output=True, timeout=timeout,
-        env={**os.environ, "PGCLIENTENCODING": "UTF8"},
-    )
-    result.check_returncode()
-    data = json.loads(result.stdout)
-    if not isinstance(data, dict) or not isinstance(data.get("snapshot"), str):
-        raise ValueError("invalid capture response")
-    return data
+    deadline = time.monotonic() + timeout
+    for attempt in range(3):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise subprocess.TimeoutExpired("psql", timeout)
+        result = subprocess.run(
+            ["psql", "-XqAtw", "-v", "ON_ERROR_STOP=1", "-v", "VERBOSITY=verbose",
+             "-v", f"previous={previous}", "-v", f"timeout={math.ceil(remaining * 1000)}ms"],
+            input=sql, text=True, encoding="utf-8", capture_output=True, timeout=remaining,
+            env={**os.environ, "PGCLIENTENCODING": "UTF8"},
+        )
+        if result.returncode and " 42P01:" in result.stderr and attempt < 2:
+            # A target can be renamed or dropped between discovery and LOCK.
+            continue
+        result.check_returncode()
+        data = json.loads(result.stdout)
+        if isinstance(data, dict) and data.get("protected_inventory_changed") is True:
+            continue
+        if not isinstance(data, dict) or not isinstance(data.get("snapshot"), str):
+            raise ValueError("invalid capture response")
+        return data
+    raise ValueError("protected relation inventory changed during capture")
 
 
 def collect(archive, args, key, stopped, checkpoint=None):

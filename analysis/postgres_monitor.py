@@ -16,11 +16,12 @@ from .postgres_evidence import (
 )
 
 
-def capture(previous, timeout):
-    sql = """
+def capture(previous, timeout, fm33=False):
+    function = "nsg_fm33.capture" if fm33 else "nsg_fm22.capture"
+    sql = f"""
 BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;
 SET LOCAL statement_timeout = :'timeout';
-SELECT nsg_fm22.capture(NULLIF(:'previous', '')::pg_snapshot);
+SELECT {function}(NULLIF(:'previous', '')::pg_snapshot);
 COMMIT;
 """
     result = subprocess.run(
@@ -36,7 +37,7 @@ COMMIT;
     return data
 
 
-def collect(archive, args, key, stopped):
+def collect(archive, args, key, stopped, checkpoint=None):
     previous, previous_mac, sequence = "", GENESIS, 0
 
     def sample(kind):
@@ -44,7 +45,7 @@ def collect(archive, args, key, stopped):
         record = {"schema": SCHEMA, "run_id": args.run_id, "seq": sequence,
                   "kind": kind, "timestamp": time.time_ns(), "previous_mac": previous_mac}
         try:
-            data = capture(previous, args.timeout)
+            data = capture(previous, args.timeout, args.fm33)
             previous = data["snapshot"]
             record["capture"] = data
         except (OSError, subprocess.SubprocessError, ValueError) as error:
@@ -63,9 +64,17 @@ def collect(archive, args, key, stopped):
     if not sample("baseline"):
         return 1
     print("postgres-monitor: baseline ready", flush=True)
-    while not stopped.wait(max(0, started + args.interval - time.monotonic())):
+    wake = checkpoint if checkpoint is not None else stopped
+    while not stopped.is_set():
+        wake.wait(max(0, started + args.interval - time.monotonic()))
+        if stopped.is_set():
+            break
+        if checkpoint is not None:
+            checkpoint.clear()
         started = time.monotonic()
         sample("sample")
+        if args.fm33:
+            print(f"postgres-monitor: FM3.3 checkpoint {sequence - 1}", flush=True)
     return 0 if sample("final") else 1
 
 
@@ -76,6 +85,7 @@ def main():
     parser.add_argument("--run-id", required=True)
     parser.add_argument("--interval", type=float, default=10)
     parser.add_argument("--timeout", type=float, default=5)
+    parser.add_argument("--fm33", action="store_true", help="include enrolled FM3.3 rows and sequences")
     args = parser.parse_args()
     if not args.run_id.strip() or not all(
         math.isfinite(value) and value > 0 for value in (args.interval, args.timeout)
@@ -86,10 +96,19 @@ def main():
         path = args.output / STREAM_PATH
         path.parent.mkdir(parents=True, exist_ok=True)
         stopped = threading.Event()
+        checkpoint = threading.Event() if args.fm33 else None
+
+        def stop(*_):
+            stopped.set()
+            if checkpoint is not None:
+                checkpoint.set()
+
         for signum in (signal.SIGINT, signal.SIGTERM):
-            signal.signal(signum, lambda *_: stopped.set())
+            signal.signal(signum, stop)
+        if checkpoint is not None:
+            signal.signal(signal.SIGUSR1, lambda *_: checkpoint.set())
         with path.open("x", encoding="ascii") as archive:
-            return collect(archive, args, key, stopped)
+            return collect(archive, args, key, stopped, checkpoint)
     except (OSError, ValueError) as error:
         print(f"postgres-monitor: {error}", file=sys.stderr)
         return 1

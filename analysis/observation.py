@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Iterator
 
 from .integrity import StreamFlag, stream_integrity
-from .postgres_evidence import STREAM_PATH as POSTGRES_STREAM_PATH
+from .postgres_evidence import ARTIFACTS_PATH, STREAM_PATH as POSTGRES_STREAM_PATH
 from .records import (
     BccEvent,
     BashHistoryLine,
@@ -64,6 +64,7 @@ STREAM_PATHS = {
     "bash_history": "tty",
     "health": "health.json",
     "postgres": POSTGRES_STREAM_PATH,
+    "fm33_artifacts": ARTIFACTS_PATH,
 }
 
 #: Streams whose records come from JSONL files (envelope-pinned).
@@ -116,6 +117,7 @@ class Observation:
     flags: tuple[StreamFlag, ...] = ()
     pins: EnvelopePins = DEFAULT_ENVELOPE_PINS
     postgres_evidence: tuple[tuple[int, dict], ...] = ()
+    fm33_artifacts: tuple[tuple[int, dict], ...] = ()
 
 
 # ---------------------------------------------------------------------------
@@ -716,6 +718,11 @@ def load_observation(
         tuple(iter_jsonl(postgres_path, stream="postgres", flags=flags))
         if postgres_path.parent.exists() else ()
     )
+    artifacts_path = root / ARTIFACTS_PATH
+    fm33_artifacts = (
+        tuple(iter_jsonl(artifacts_path, stream="fm33_artifacts", flags=flags))
+        if artifacts_path.parent.exists() else ()
+    )
 
     observation = Observation(
         root=root,
@@ -733,5 +740,6 @@ def load_observation(
         flags=tuple(flags),
         pins=pins,
         postgres_evidence=postgres_evidence,
+        fm33_artifacts=fm33_artifacts,
     )
     return replace(observation, flags=tuple(flags) + stream_integrity(observation))

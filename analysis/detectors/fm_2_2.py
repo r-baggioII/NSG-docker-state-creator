@@ -1,12 +1,11 @@
 """FM2.2: attributable loss of protected PostgreSQL data."""
 
-import hmac
 import math
 import re
 from urllib.parse import quote
 
 from ..integrity import flag_strings, flags_for_streams
-from ..postgres_evidence import GENESIS, SCHEMA, evidence_mac, parse_key
+from ..postgres_evidence import SCHEMA, parse_key, verified_records
 from ..verdict import UnitResult
 
 
@@ -14,7 +13,6 @@ FM_ID = "FM2.2"
 DEPENDS_ON = frozenset({"postgres"})
 OPERATIONS = {"insert", "update", "delete", "truncate", "drop_table",
               "drop_column", "coverage_gap"}
-HEX_MAC = re.compile(r"[0-9a-f]{64}")
 INTEGER = re.compile(r"-?[0-9]{1,128}")
 
 
@@ -52,31 +50,10 @@ def _contract(cfg):
 
 
 def _verified_captures(records, key, run_id, tables, max_gap):
-    if len(records) < 2:
-        raise ValueError("incomplete_capture")
-    previous_mac, previous_time = GENESIS, None
     installation, database = None, None
     seen_changes = set()
     captures = []
-    for index, (line, record) in enumerate(records):
-        signed = {name: value for name, value in record.items() if name != "mac"}
-        mac = record.get("mac")
-        if not isinstance(mac, str) or not HEX_MAC.fullmatch(mac):
-            raise ValueError(f"invalid_mac:line={line}")
-        try:
-            expected = evidence_mac(key, signed)
-        except (ValueError, TypeError, RecursionError):
-            raise ValueError(f"invalid_record:line={line}") from None
-        if not hmac.compare_digest(mac, expected) or record.get("previous_mac") != previous_mac:
-            raise ValueError(f"signature_or_chain_mismatch:line={line}")
-        kind = "baseline" if index == 0 else "final" if index == len(records) - 1 else "sample"
-        ts = record.get("timestamp")
-        if (record.get("schema") != SCHEMA or record.get("run_id") != run_id
-                or type(record.get("seq")) is not int or record["seq"] != index
-                or record.get("kind") != kind or type(ts) is not int or not 0 < ts < 2**63):
-            raise ValueError(f"invalid_run_bracket_or_sequence:line={line}")
-        if previous_time is not None and not 0 < (ts - previous_time) / 1_000_000_000 <= max_gap:
-            raise ValueError(f"capture_cadence_gap:line={line}")
+    for index, (line, record) in enumerate(verified_records(records, key, run_id, SCHEMA, max_gap)):
         sample = record.get("capture")
         if "error" in record or not isinstance(sample, dict):
             raise ValueError(f"capture_failed:line={line}")
@@ -118,7 +95,6 @@ def _verified_captures(records, key, run_id, tables, max_gap):
             seen_changes.add(event_id)
             by_table[table].append(event)
         captures.append((line, inventory, by_table))
-        previous_time, previous_mac = ts, mac
     return captures
 
 
